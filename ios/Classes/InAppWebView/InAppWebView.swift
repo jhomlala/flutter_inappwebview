@@ -2216,12 +2216,40 @@ public class InAppWebView: WKWebView, UIScrollViewDelegate, WKUIDelegate, WKNavi
             download.delegate = self
         }
 
+    var downloadPath: URL? = nil
+
     @available(iOS 14.5, *)
     public func download(_ download: WKDownload, decideDestinationUsing response: URLResponse, suggestedFilename: String, completionHandler: @escaping (URL?) -> Void) {
-        let fileURL = self.getDocumentsDirectory().appendingPathComponent(suggestedFilename)
-        onDownloadStart(url: "downloadios" + fileURL.absoluteString)
-            completionHandler(fileURL)
+        let temporaryDir = NSTemporaryDirectory()
+        var fileName = temporaryDir + "" + suggestedFilename
+        let escapedfileName = fileName.removingPercentEncoding?.replacingOccurrences(of: " ", with: "_").folding(options: .diacriticInsensitive, locale: .current)
+        if (escapedfileName != nil){
+            let url = URL(fileURLWithPath:escapedfileName!)
+            do {
+                try FileManager.default.removeItem(at: url)
+                print("File removed")
+            } catch let error as NSError {
+                print("Error: \(error.domain)")
+            }
+            downloadPath = url
+            completionHandler(url)
+        } else {
+            downloadPath = nil
         }
+
+
+        }
+    @available(iOS 14.5, *)
+    public func download(_ download: WKDownload, didFailWithError error: Error, resumeData: Data?) {
+        print("Error: " + error.localizedDescription)
+    }
+    @available(iOS 14.5, *)
+    public func downloadDidFinish(_ download: WKDownload) {
+        if (downloadPath != nil){
+            onDownloadStart(url: "downloadios" + downloadPath!.absoluteString)
+        }
+
+    }
 
     func getDocumentsDirectory() -> URL {
         // find all possible documents directories for this user
